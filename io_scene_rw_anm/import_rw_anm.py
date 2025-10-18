@@ -37,10 +37,24 @@ def create_action(act_name, arm_obj, rw_animation: AnmAnimation, options, report
     missing_bones = set()
     need_bones_num = 0
 
+    if bpy.app.version < (4, 4, 0):
+        action_fcurves = act.fcurves
+        action_groups = act.groups
+
+    else:
+        slot = act.slots.new(id_type='OBJECT', name='ANM')
+
+        layer = act.layers.new('Layer')
+        strip = layer.strips.new(type='KEYFRAME')
+        channelbag = strip.channelbag(slot, ensure=True)
+
+        action_fcurves = channelbag.fcurves
+        action_groups = channelbag.groups
+
     for bone_id, bone in enumerate(arm_obj.data.bones):
-        g = act.groups.new(name=bone.name)
-        cl = [act.fcurves.new(data_path=(POSEDATA_PREFIX % bone.name) + 'location', index=i) for i in range(3)]
-        cr = [act.fcurves.new(data_path=(POSEDATA_PREFIX % bone.name) + 'rotation_quaternion', index=i) for i in range(4)]
+        g = action_groups.new(name=bone.name)
+        cl = [action_fcurves.new(data_path=(POSEDATA_PREFIX % bone.name) + 'location', index=i) for i in range(3)]
+        cr = [action_fcurves.new(data_path=(POSEDATA_PREFIX % bone.name) + 'rotation_quaternion', index=i) for i in range(4)]
 
         for c in cl + cr:
             c.group = g
@@ -175,6 +189,8 @@ def load(context, filepath, options, reporter):
     for anim in rw_animations:
         act = create_action(path.basename(filepath), arm_obj, anim, options, reporter)
         animation_data.action = act
+        if bpy.app.version >= (4, 4, 0):
+            animation_data.action_slot = act.slots[-1]
         context.scene.frame_end = int(anim.duration * options["fps"])
 
         if rw_version is not None:

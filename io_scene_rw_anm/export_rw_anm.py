@@ -1,5 +1,6 @@
 import bpy
 
+from bpy_extras import anim_utils
 from dataclasses import dataclass
 from mathutils import Matrix, Quaternion, Vector
 from os import path
@@ -30,9 +31,17 @@ def get_pose_transforms(context, arm_obj, act):
     frame_start = context.scene.frame_start
     frame_end = context.scene.frame_end + 1
 
+    if bpy.app.version < (4, 4, 0):
+        action_fcurves = act.fcurves
+
+    else:
+        slot = arm_obj.animation_data.action_slot
+        channelbag = anim_utils.action_get_channelbag_for_slot(act, slot)
+        action_fcurves = channelbag.fcurves
+
     bone_ids = [b for b, bone in enumerate(arm_obj.data.bones) if is_bone_taged(bone)]
     times_map = {}
-    for curve in act.fcurves:
+    for curve in action_fcurves:
         if 'pose.bones' not in curve.data_path:
             continue
 
